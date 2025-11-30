@@ -1,6 +1,6 @@
 // Routes for listing data.
 // These endpoints call the Repliers listings API
-// so the frontend can show live market data.
+// so the frontend can show market data.
 const express = require('express');
 require('dotenv').config();
 
