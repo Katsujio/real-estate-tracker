@@ -18,10 +18,8 @@ const formatOrdinal = (day) => {
 const dueLabel = (day) => `${formatOrdinal(day || 1)} of each month`;
 const nextDueDate = (day) => {
   const now = new Date();
-  const due = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), day || 1));
-  if (due < now) {
-    due.setUTCMonth(due.getUTCMonth() + 1);
-  }
+  // Show the due date on the first of the *next* month in local time
+  const due = new Date(now.getFullYear(), now.getMonth() + 1, day || 1);
   return due.toLocaleDateString();
 };
 const contractEndInMonths = (months) => {
@@ -149,7 +147,10 @@ export default function LandlordPortal() {
           </p>
         </div>
         <div className="portal-actions">
-          <button type="button" className="outline" onClick={refresh}>Refresh data</button>
+          {/* Show which landlord is signed in, same style as renter portal */}
+          <span className="pill pill-muted">
+            Demo email: {user?.email || 'landlord@demo.com'}
+          </span>
           <button type="button" className="outline" onClick={handleLogout}>Sign out</button>
         </div>
       </header>

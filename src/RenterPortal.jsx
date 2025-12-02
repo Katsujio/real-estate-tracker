@@ -33,10 +33,8 @@ const dueLabel = (day) => `${formatOrdinal(day || 1)} of each month`;
 
 const nextDueDate = (day) => {
   const now = new Date();
-  const due = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), day || 1));
-  if (due < now) {
-    due.setUTCMonth(due.getUTCMonth() + 1);
-  }
+  // For the demo, show the due date as the first of the *next* month in local time
+  const due = new Date(now.getFullYear(), now.getMonth() + 1, day || 1);
   return due.toLocaleDateString();
 };
 
@@ -132,7 +130,8 @@ export default function RenterPortal() {
             date: p.paid_at,
             amount: p.amount,
             method: p.type === 'charge' ? 'Due amount' : 'Online payment',
-            note: p.type === 'charge' ? 'Posted by landlord' : 'Paid by you',
+            // Treat credits like rent charges: both are posted by the landlord
+            note: (p.type === 'charge' || p.type === 'credit') ? 'Posted by landlord' : 'Paid by you',
             type: p.type || 'payment',
           })),
         );
@@ -267,7 +266,8 @@ export default function RenterPortal() {
             amount: p.amount,
             method: p.type === 'charge' ? 'Due amount' : methodLabel,
             type: p.type || 'payment',
-            note: p.type === 'charge' ? 'Posted by landlord' : 'Paid by you',
+            // For both charges and credits, show that the landlord posted it
+            note: (p.type === 'charge' || p.type === 'credit') ? 'Posted by landlord' : 'Paid by you',
           })),
         );
         const balance = Number(res.lease?.current_balance) || 0;
