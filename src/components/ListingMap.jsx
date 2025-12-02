@@ -16,6 +16,7 @@ export default function ListingMap({ properties, selectedId, onSelect, onListing
     try {
       const bounds = evt.target.getBounds?.();
       if (!bounds) return;
+      // Fetch listings for the visible box so the list stays in sync with the map
       const nextListings = await fetchListingsForViewport(
         bounds,
         'https://via.placeholder.com/1200x800.png?text=Listing+Preview',

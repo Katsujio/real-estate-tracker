@@ -18,6 +18,7 @@ const { createToken, requireAuth } = require('./auth');
 const { isValidEmail, isValidPassword, sanitizePreferences } = require('./utils/validators');
 const propertiesRoutes = require('./routes/propertiesRoutes');
 const favoritesRoutes = require('./routes/favoritesRoutes');
+const rentalRoutes = require('./routes/rentalRoutes');
 
 // Basic settings for dev
 const PORT = process.env.PORT || 4000;
@@ -26,6 +27,7 @@ const CORS_ORIGIN = process.env.CORS_ORIGIN || '*'; // allow any origin in dev
 const app = express();
 
 // Allow cross-origin requests and read JSON bodies
+// These keep the API usable from the Vite dev server
 app.use(cors({ origin: CORS_ORIGIN }));
 app.use(express.json());
 
@@ -38,7 +40,7 @@ app.get('/health', (req, res) => {
 // Body: { email, password, preferences? }
 const registerHandler = async (req, res) => {
   try {
-    const { email, password, preferences } = req.body || {};
+    const { email, password, preferences, role: rawRole, name } = req.body || {};
 
     // Check the inputs
     if (!isValidEmail(email)) {
@@ -54,6 +56,8 @@ const registerHandler = async (req, res) => {
       return res.status(409).json({ error: 'Email already registered.' });
     }
 
+    const role = rawRole === 'landlord' ? 'landlord' : 'renter';
+
     // Hash the password so we never store the plain text
     const passwordHash = await bcrypt.hash(password, 10);
 
@@ -63,6 +67,8 @@ const registerHandler = async (req, res) => {
       id: uuidv4(),
       email: String(email).toLowerCase(),
       passwordHash,
+      role,
+      fullName: name || null,
       createdAt: now,
       updatedAt: now,
       preferences: {
@@ -79,7 +85,15 @@ const registerHandler = async (req, res) => {
     const token = createToken(user);
 
     // Send back the safe fields
-    const publicUser = { id: user.id, email: user.email, createdAt: user.createdAt, updatedAt: user.updatedAt, preferences: user.preferences };
+    const publicUser = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      fullName: user.fullName,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      preferences: user.preferences,
+    };
     return res.status(201).json({ token, user: publicUser });
   } catch (err) {
     console.error('Register error:', err);
@@ -109,7 +123,15 @@ const loginHandler = async (req, res) => {
     }
 
     const token = createToken(user);
-    const publicUser = { id: user.id, email: user.email, createdAt: user.createdAt, updatedAt: user.updatedAt, preferences: user.preferences };
+    const publicUser = {
+      id: user.id,
+      email: user.email,
+      role: user.role || 'renter',
+      fullName: user.fullName || null,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      preferences: user.preferences,
+    };
     return res.json({ token, user: publicUser });
   } catch (err) {
     console.error('Login error:', err);
@@ -125,7 +147,15 @@ const meHandler = async (req, res) => {
     const userId = req.auth.sub; // set by requireAuth()
     const user = await db.getUserById(userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
-    const publicUser = { id: user.id, email: user.email, createdAt: user.createdAt, updatedAt: user.updatedAt, preferences: user.preferences };
+    const publicUser = {
+      id: user.id,
+      email: user.email,
+      role: user.role || 'renter',
+      fullName: user.fullName || null,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      preferences: user.preferences,
+    };
     return res.json(publicUser);
   } catch (err) {
     console.error('Me error:', err);
@@ -163,9 +193,12 @@ app.put('/me/preferences', requireAuth, async (req, res) => {
 app.use('/api/properties', propertiesRoutes);
 app.use('/api/listings', propertiesRoutes);
 app.use('/api/favorites', favoritesRoutes);
+app.use('/api', rentalRoutes);
 
 // Start the server after the DB is ready
 db.init()
+  .then(() => db.ensureDemoUsers())
+  .then(() => db.ensureDemoRentalData())
   .then(() => {
     app.listen(PORT, () => {
       console.log(`API server listening on http://localhost:${PORT}`);

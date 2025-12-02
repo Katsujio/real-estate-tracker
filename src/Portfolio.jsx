@@ -59,6 +59,7 @@ export default function Portfolio({ savedDeals = [], onSavedChange }) {
         </div>
       </header>
 
+      {/* Quick stats so the user can skim progress */}
       <div className="portfolio-tiles">
         {tileData.map((metric) => (
           <div key={metric.label} className="portfolio-tile">

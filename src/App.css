@@ -3,6 +3,8 @@
   --max-width: 1000px;
   --card-gap: 18px;
   --accent: #007bff;
+  --success: #2e9c5f;
+  --muted: #5c6474;
 }
 
 
@@ -122,6 +124,7 @@ h2 { margin-top: 26px; margin-bottom: 12px; }
 .status-message {
   margin: 6px 0;
   color: #5c6474;
+  font-size: 13px;
 }
 .status-message.error {
   color: #c0392b;
@@ -230,10 +233,11 @@ h2 { margin-top: 26px; margin-bottom: 12px; }
   letter-spacing: 0.08em;
 }
 .tile-value {
-  margin: 8px 0 0;
+  margin: 6px 0 0;
   font-size: 24px;
-  font-weight: 600;
-  color: #1f2937;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.01em;
 }
 
 /* Filters row */
@@ -662,3 +666,262 @@ h2 { margin-top: 26px; margin-bottom: 12px; }
 .pill-offer-out { background: #fef3c7; color: #92400e; }
 .pill-under-contract { background: #ede9fe; color: #5b21b6; }
 .pill-closed { background: #dcfce7; color: #15803d; }
+
+/* Landlord and renter portals */
+.portal-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.portal-header {
+  background: #fff;
+  padding: 18px;
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+}
+.portal-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.portal-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+.portal-tile {
+  background: #fff;
+  padding: 12px;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+}
+.portal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+}
+.portal-card {
+  background: #fff;
+  padding: 14px;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+  border: 1px solid #e2e8f0;
+}
+.portal-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.portal-card h3 {
+  margin: 4px 0 8px;
+}
+.portal-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  margin: 8px 0;
+  flex-wrap: wrap;
+}
+.simple-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.simple-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 600;
+  color: #0f172a;
+  font-size: 14px;
+}
+.simple-form input {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  font: inherit;
+  background: #f8fafc;
+}
+.simple-form button {
+  padding: 11px 16px;
+  border-radius: 10px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+button.outline {
+  background: #fff;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+.error-list {
+  margin: 4px 0;
+  padding-left: 16px;
+  color: #b00020;
+}
+.pill-good { background: #dcfce7; color: #166534; }
+.pill-bad { background: #fee2e2; color: #991b1b; }
+.pill-muted { background: #e2e8f0; color: #475569; }
+.payment-note {
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+/* Panels to mimic the reference layout */
+.portal-two-col {
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+.panel {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #d9e0ec;
+  overflow: hidden;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
+}
+.panel-bar {
+  height: 6px;
+  background: var(--accent);
+}
+.panel-bar.bar-green { background: #7cbf3f; }
+.panel-bar.bar-purple { background: #6151c3; }
+.panel-body {
+  padding: 14px;
+}
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.balance-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+.balance-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+.balance-amount {
+  margin: 6px 0;
+  font-size: 32px;
+}
+.table-shell {
+  background: #f8fafc;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+}
+.balance-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.balance-row {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+}
+.balance-row.muted { color: #6b7280; font-weight: 500; }
+.balance-row.total { border-top: 1px solid #e2e8f0; padding-top: 8px; }
+.ledger-list {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 220px; /* keep ledger to ~4-5 items before scrolling */
+  overflow-y: auto;
+}
+.ledger-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 10px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+}
+.ledger-main {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.ledger-title { margin: 0; font-weight: 700; }
+.ledger-note { margin: 0; color: #6b7280; font-size: 13px; }
+.ledger-amount { font-weight: 700; color: #111827; }
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.dot-green { background: var(--success); }
+.dot-yellow { background: #f59e0b; }
+.dot-purple { background: #7c3aed; }
+.step-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.step {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid #cbd5e1;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  color: #475569;
+}
+.step.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.step-line {
+  flex: 1;
+  height: 2px;
+  background: #cbd5e1;
+}
+.saved-methods {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.radio-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+.panel-note {
+  margin-top: 10px;
+  padding: 8px;
+  border-radius: 8px;
+  background: #f0f4ff;
+  border: 1px dashed #cbd5e1;
+}
+.read-only-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}

@@ -32,6 +32,7 @@ export default function SavedProperties({
   onSavedChange = noop,
   savedList
 }) {
+  // Local state holds the pipeline unless the parent passes savedList (controlled mode)
   const [form, setForm] = useState(EMPTY_FORM);
   const [saved, setSaved] = useState([]);
   const [filterStage, setFilterStage] = useState('all');
@@ -56,6 +57,7 @@ export default function SavedProperties({
     try {
       localStorage.setItem(storageKey, JSON.stringify(saved));
     } catch (err) {
+      // If storage is blocked, just log and keep going
       console.warn('Unable to persist saved properties', err);
     }
   }, [saved, controlled]);
@@ -162,6 +164,7 @@ export default function SavedProperties({
 
       <div className="saved-form-wrapper">
         <form className="saved-form" onSubmit={handleSubmit}>
+          {/* Quick form to add a deal to the pipeline */}
           <input
             type="text"
             placeholder="Property address"

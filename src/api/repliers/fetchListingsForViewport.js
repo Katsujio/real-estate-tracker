@@ -5,6 +5,7 @@ import { normalizeListingPayload } from './normalizer';
 
 export async function fetchListingsForViewport(bounds, placeholderImage, signal) {
   const polygon = boundsToPolygon(bounds);
+  // POST map shape so backend can filter to the viewport
   const res = await fetch('/api/listings', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

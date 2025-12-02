@@ -8,8 +8,9 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
 function createToken(user) {
+  // Keep payload tiny: user id/email/role only
   return jwt.sign(
-    { sub: user.id, email: user.email },
+    { sub: user.id, email: user.email, role: user.role || 'renter' },
     JWT_SECRET,
     { expiresIn: JWT_EXPIRES_IN }
   );

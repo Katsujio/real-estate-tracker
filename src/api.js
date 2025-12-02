@@ -69,3 +69,5 @@ export async function deleteFavorite(token, listingId) {
   if (!res.ok) throw new Error(data.error || 'Unable to remove favorite');
   return data.favorites || [];
 }
+// Small helper wrappers around auth/favorites API calls.
+// Keeps fetch logic out of components.

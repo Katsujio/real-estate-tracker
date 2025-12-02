@@ -3,10 +3,11 @@
 // - Creates tables on first run.
 // - Exposes helper functions for users, properties, and favorites.
 
-const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
 const sqlite3 = require('sqlite3').verbose();
+const { v4: uuidv4 } = require('uuid');
+const bcrypt = require('bcryptjs');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const DB_FILE = path.join(DATA_DIR, 'app.sqlite');
@@ -46,17 +47,23 @@ async function init() {
   await fsp.mkdir(DATA_DIR, { recursive: true });
   db = new sqlite3.Database(DB_FILE);
 
+  // Users table stores both landlords and renters for auth
   await run(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
       email TEXT NOT NULL UNIQUE,
       password_hash TEXT NOT NULL,
+      role TEXT DEFAULT 'renter',
+      full_name TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       preferences_json TEXT NOT NULL
     );
   `);
   await run(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);`);
+  // Add optional columns for roles and names if the DB already exists
+  await run(`ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'renter'`).catch(() => {});
+  await run(`ALTER TABLE users ADD COLUMN full_name TEXT`).catch(() => {});
 
   await run(`
     CREATE TABLE IF NOT EXISTS properties (
@@ -92,21 +99,6 @@ async function init() {
   await run(`CREATE INDEX IF NOT EXISTS idx_properties_mls ON properties(mls_number);`);
   await run(`CREATE INDEX IF NOT EXISTS idx_properties_city ON properties(address_city);`);
 
-  // user_id uses TEXT to match existing auth user ids
-  await run(`
-    CREATE TABLE IF NOT EXISTS user_preferences (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id TEXT NOT NULL,
-      default_city TEXT,
-      min_price INTEGER,
-      max_price INTEGER,
-      min_bedrooms INTEGER,
-      max_bedrooms INTEGER,
-      property_type TEXT,
-      FOREIGN KEY (user_id) REFERENCES users(id)
-    );
-  `);
-
   await run(`
     CREATE TABLE IF NOT EXISTS user_saved_properties (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -118,6 +110,57 @@ async function init() {
     );
   `);
   await run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_saved_user_prop ON user_saved_properties(user_id, property_id);`);
+
+  // Rental tables for landlord/renter flow
+  await run(`
+    CREATE TABLE IF NOT EXISTS rental_properties (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      landlord_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      address TEXT NOT NULL,
+      image_url TEXT,
+      stage TEXT NOT NULL DEFAULT 'Reviewing',
+      monthly_rent INTEGER DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (landlord_id) REFERENCES users(id)
+    );
+  `);
+
+  await run(`
+    CREATE TABLE IF NOT EXISTS leases (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      property_id INTEGER NOT NULL,
+      renter_id TEXT NOT NULL,
+      start_date TEXT,
+      occupants_count INTEGER DEFAULT 1,
+      monthly_rent INTEGER NOT NULL,
+      due_day INTEGER NOT NULL,
+      current_balance INTEGER NOT NULL DEFAULT 0,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (property_id) REFERENCES rental_properties(id),
+      FOREIGN KEY (renter_id) REFERENCES users(id)
+    );
+  `);
+  // Backfill columns if the DB was created before these fields existed
+  await run(`ALTER TABLE leases ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1`).catch(() => {});
+  await run(`ALTER TABLE leases ADD COLUMN due_day INTEGER`).catch(() => {});
+  await run(`ALTER TABLE leases ADD COLUMN current_balance INTEGER NOT NULL DEFAULT 0`).catch(() => {});
+  await run(`ALTER TABLE leases ADD COLUMN occupants_count INTEGER DEFAULT 1`).catch(() => {});
+
+  await run(`
+    CREATE TABLE IF NOT EXISTS payments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      lease_id INTEGER NOT NULL,
+      amount INTEGER NOT NULL,
+      paid_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      type TEXT NOT NULL DEFAULT 'payment',
+      FOREIGN KEY (lease_id) REFERENCES leases(id)
+    );
+  `);
+  // Backfill paid_at if table exists without it
+  await run(`ALTER TABLE payments ADD COLUMN paid_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP`).catch(() => {});
+  await run(`ALTER TABLE payments ADD COLUMN type TEXT NOT NULL DEFAULT 'payment'`).catch(() => {});
 }
 
 // Turn a DB row into the user object we use in code
@@ -131,6 +174,8 @@ function rowToUser(row) {
     passwordHash: row.password_hash,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    role: row.role || 'renter',
+    fullName: row.full_name || null,
     preferences,
   };
 }
@@ -148,13 +193,15 @@ async function getUserById(id) {
 async function createUser(user) {
   await run(
     `
-    INSERT INTO users (id, email, password_hash, created_at, updated_at, preferences_json)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO users (id, email, password_hash, role, full_name, created_at, updated_at, preferences_json)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `,
     [
       user.id,
       user.email,
       user.passwordHash,
+      user.role || 'renter',
+      user.fullName || null,
       user.createdAt,
       user.updatedAt,
       JSON.stringify(user.preferences || {}),
@@ -174,7 +221,9 @@ async function updateUserById(id, patch) {
       password_hash = ?,
       created_at = ?,
       updated_at = ?,
-      preferences_json = ?
+      preferences_json = ?,
+      role = ?,
+      full_name = ?
     WHERE id = ?
   `,
     [
@@ -183,6 +232,8 @@ async function updateUserById(id, patch) {
       updated.createdAt,
       updated.updatedAt,
       JSON.stringify(updated.preferences || {}),
+      updated.role || 'renter',
+      updated.fullName || null,
       updated.id,
     ],
   );
@@ -192,6 +243,7 @@ async function updateUserById(id, patch) {
 // Save a listing record (minimal fields) if it does not exist, return its row id
 async function upsertPropertyFromListing(listing) {
   if (!listing || !listing.id) return null;
+  // Use MLS/listing id as the unique key
   const mls = String(listing.id);
   const existing = await get('SELECT * FROM properties WHERE mls_number = ? LIMIT 1', [mls]);
   if (existing) return existing.id;
@@ -237,6 +289,7 @@ async function addFavorite(userId, listing) {
   const propertyId = await upsertPropertyFromListing(listing);
   if (!propertyId) return null;
   const now = new Date().toISOString();
+  // Use INSERT OR IGNORE so double clicks do not break
   await run(
     `
       INSERT OR IGNORE INTO user_saved_properties (user_id, property_id, created_at)
@@ -288,6 +341,237 @@ async function getFavoritesForUser(userId) {
   });
 }
 
+// --- Rental helpers ---
+
+async function ensureDemoUsers() {
+  const landlordEmail = 'landlord@demo.com';
+  const renterEmail = 'renter@demo.com';
+  const now = new Date().toISOString();
+
+  const landlord = await getUserByEmail(landlordEmail);
+  if (!landlord) {
+    const landlordUser = {
+      id: uuidv4(),
+      email: landlordEmail,
+      passwordHash: await bcrypt.hash('password123', 10),
+      role: 'landlord',
+      fullName: 'Demo Landlord',
+      createdAt: now,
+      updatedAt: now,
+      preferences: {},
+    };
+    await createUser(landlordUser);
+  }
+
+  const renter = await getUserByEmail(renterEmail);
+  if (!renter) {
+    const renterUser = {
+      id: uuidv4(),
+      email: renterEmail,
+      passwordHash: await bcrypt.hash('password123', 10),
+      role: 'renter',
+      fullName: 'Demo Renter',
+      createdAt: now,
+      updatedAt: now,
+      preferences: {},
+    };
+    await createUser(renterUser);
+  }
+}
+
+async function createRentalProperty({ landlordId, title, address, imageUrl, stage = 'Reviewing', monthlyRent = 0 }) {
+  const now = new Date().toISOString();
+  await run(
+    `
+      INSERT INTO rental_properties (landlord_id, title, address, image_url, stage, monthly_rent, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `,
+    [landlordId, title, address, imageUrl || null, stage, monthlyRent, now],
+  );
+  const created = await get(
+    `
+      SELECT * FROM rental_properties
+      WHERE landlord_id = ? AND title = ? AND address = ?
+      ORDER BY id DESC
+      LIMIT 1
+    `,
+    [landlordId, title, address],
+  );
+  return created;
+}
+
+async function listRentalPropertiesForLandlord(landlordId) {
+  return all(
+    `
+      SELECT * FROM rental_properties
+      WHERE landlord_id = ?
+      ORDER BY created_at DESC
+    `,
+    [landlordId],
+  );
+}
+
+async function getRentalPropertyById(id) {
+  return get('SELECT * FROM rental_properties WHERE id = ? LIMIT 1', [id]);
+}
+
+async function createLease({
+  propertyId,
+  renterId,
+  startDate,
+  occupantsCount = 1,
+  monthlyRent,
+  dueDay,
+  currentBalance = 0,
+}) {
+  const now = new Date().toISOString();
+  await run(
+    `
+      INSERT INTO leases (property_id, renter_id, start_date, occupants_count, monthly_rent, due_day, current_balance, is_active, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
+    `,
+    [propertyId, renterId, startDate || null, occupantsCount, monthlyRent, dueDay, currentBalance, now],
+  );
+  const created = await get(
+    `
+      SELECT * FROM leases
+      WHERE property_id = ?
+      ORDER BY id DESC
+      LIMIT 1
+    `,
+    [propertyId],
+  );
+  return created;
+}
+
+async function listLeasesForLandlord(landlordId) {
+  return all(
+    `
+      SELECT l.*, rp.title as property_title, rp.address as property_address, u.email as renter_email, u.full_name as renter_name
+      FROM leases l
+      JOIN rental_properties rp ON rp.id = l.property_id
+      LEFT JOIN users u ON u.id = l.renter_id
+      WHERE rp.landlord_id = ?
+      ORDER BY l.created_at DESC
+    `,
+    [landlordId],
+  );
+}
+
+async function listLeasesForRenter(renterId) {
+  return all(
+    `
+      SELECT l.*, rp.title as property_title, rp.address as property_address
+      FROM leases l
+      JOIN rental_properties rp ON rp.id = l.property_id
+      WHERE l.renter_id = ?
+      ORDER BY l.created_at DESC
+    `,
+    [renterId],
+  );
+}
+
+async function getActiveLeaseForProperty(propertyId) {
+  return get(
+    `
+      SELECT l.*, u.email as renter_email, u.full_name as renter_name
+      FROM leases l
+      LEFT JOIN users u ON u.id = l.renter_id
+      WHERE l.property_id = ? AND l.is_active = 1
+      ORDER BY l.id DESC
+      LIMIT 1
+    `,
+    [propertyId],
+  );
+}
+
+async function getLeaseById(id) {
+  return get('SELECT * FROM leases WHERE id = ? LIMIT 1', [id]);
+}
+
+// Save a payment-like entry. type can be 'payment' (renter paid), 'charge' (landlord added rent), or 'credit' (landlord reduced balance).
+async function recordPayment({ leaseId, amount, type = 'payment' }) {
+  const now = new Date().toISOString();
+  await run(
+    `
+      INSERT INTO payments (lease_id, amount, paid_at, type)
+      VALUES (?, ?, ?, ?)
+    `,
+    [leaseId, amount, now, type],
+  );
+  // Only reduce balance for renter payments; charges/credits already change balance upstream
+  if (type === 'payment') {
+    await run(
+      `
+        UPDATE leases
+        SET current_balance = current_balance - ?
+        WHERE id = ?
+      `,
+      [amount, leaseId],
+    );
+  }
+  return get('SELECT * FROM payments WHERE lease_id = ? ORDER BY id DESC LIMIT 1', [leaseId]);
+}
+
+async function listPaymentsForLease(leaseId) {
+  return all(
+    `
+      SELECT * FROM payments
+      WHERE lease_id = ?
+      ORDER BY paid_at DESC
+    `,
+    [leaseId],
+  );
+}
+
+// Add a delta to the current balance (positive = add owed, negative = give credit)
+async function updateLeaseBalance(leaseId, delta) {
+  await run(
+    `
+      UPDATE leases
+      SET current_balance = current_balance + ?
+      WHERE id = ?
+    `,
+    [delta, leaseId],
+  );
+  return get('SELECT * FROM leases WHERE id = ? LIMIT 1', [leaseId]);
+}
+
+// Seed a simple landlord/renter, property, and lease for demos
+async function ensureDemoRentalData() {
+  // Bootstraps a simple landlord/renter/property so the demo has data
+  await ensureDemoUsers();
+  const landlord = await getUserByEmail('landlord@demo.com');
+  const renter = await getUserByEmail('renter@demo.com');
+  if (!landlord || !renter) return;
+
+  const existingProps = await listRentalPropertiesForLandlord(landlord.id);
+  let prop = existingProps[0];
+  if (!prop) {
+    prop = await createRentalProperty({
+      landlordId: landlord.id,
+      title: 'Demo Duplex',
+      address: '500 Oak St, Demo City',
+      imageUrl: null,
+      stage: 'Reviewing',
+      monthlyRent: 1200,
+    });
+  }
+
+  const activeLease = await getActiveLeaseForProperty(prop.id);
+  if (!activeLease) {
+    await createLease({
+      propertyId: prop.id,
+      renterId: renter.id,
+      startDate: new Date().toISOString(),
+      occupantsCount: 1,
+      monthlyRent: 1200,
+      dueDay: 1,
+      currentBalance: 1200, // one month due
+    });
+  }
+}
+
 module.exports = {
   init,
   run,
@@ -300,5 +584,18 @@ module.exports = {
   addFavorite,
   removeFavorite,
   getFavoritesForUser,
+  ensureDemoUsers,
+  createRentalProperty,
+  listRentalPropertiesForLandlord,
+  getRentalPropertyById,
+  createLease,
+  listLeasesForLandlord,
+  listLeasesForRenter,
+  getActiveLeaseForProperty,
+  getLeaseById,
+  recordPayment,
+  listPaymentsForLease,
+  updateLeaseBalance,
+  ensureDemoRentalData,
   paths: { DATA_DIR, DB_FILE },
 };

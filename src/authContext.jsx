@@ -18,6 +18,7 @@ export function AuthProvider({ children }) {
       setBooting(false);
       return;
     }
+    // Verify the saved token still works
     setToken(saved);
     getMe(saved)
       .then((me) => setUser(me))

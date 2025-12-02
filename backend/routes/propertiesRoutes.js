@@ -10,6 +10,7 @@ const BASE_URL = process.env.REPLIERS_API_BASE_URL || 'https://api.repliers.io';
 const API_KEY = process.env.REPLIERS_API_KEY;
 
 const buildUrl = (path, query = {}) => {
+  // Build a URL with any non-empty params
   const url = new URL(path, BASE_URL);
   Object.entries(query).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== '') {

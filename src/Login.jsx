@@ -3,6 +3,7 @@
 
 import React, { useEffect, useState } from 'react';
 // Login or sign-up pop-up. Email + password (6+). People can still browse.
+// Keeps auth UI reusable on the listings page.
 
 
 // sizes, colors, spacing

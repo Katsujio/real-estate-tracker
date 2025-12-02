@@ -9,6 +9,7 @@ const router = express.Router();
 // Get all favorites for the logged-in user
 router.get('/', requireAuth, async (req, res) => {
   try {
+    // Pull normalized listings back out of the DB
     const favorites = await db.getFavoritesForUser(req.auth.sub);
     return res.json({ favorites });
   } catch (err) {

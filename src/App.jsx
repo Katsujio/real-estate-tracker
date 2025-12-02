@@ -4,6 +4,8 @@ import { Link, useLocation } from 'react-router-dom';
 import Login from './Login';
 import Portfolio from './Portfolio';
 import ListingMap from './components/ListingMap';
+import LandlordPortal from './LandlordPortal';
+import RenterPortal from './RenterPortal';
 import { useAuth } from './authContext';
 import { fetchListings } from './api/repliers/fetchListings';
 
@@ -63,6 +65,7 @@ const FALLBACK_PROPERTIES = [
 const PLACEHOLDER_IMAGE = 'https://via.placeholder.com/1200x800.png?text=Listing+Preview';
 
 export default function App() {
+  // Central app state: listings, filters, auth, favorites, and modals.
   // Auth context gives us who is signed in and helpers to log in/out
   const { user, login, register, logout, booting } = useAuth();
   const [properties, setProperties] = useState([]);
@@ -85,6 +88,9 @@ export default function App() {
   const location = useLocation();
   const isPortfolioView = location.pathname === '/portfolio';
   const isFavoritesView = location.pathname === '/favorites';
+  const isLandlordView = location.pathname === '/landlord';
+  const isRenterView = location.pathname === '/renter';
+  const isHomeView = location.pathname === '/';
 
   // On first load, try to fetch live listings; fall back to sample data if it fails
   useEffect(() => {
@@ -95,6 +101,7 @@ export default function App() {
       try {
         const normalized = await fetchListings({ limit: 30 }, PLACEHOLDER_IMAGE);
         if (!ignore) {
+          // If we got real data, use it; otherwise fall back to the baked-in samples
           if (normalized.length > 0) {
             setProperties(normalized);
             setListVersion(Date.now());
@@ -125,6 +132,7 @@ export default function App() {
   useEffect(() => {
     try {
       const stored = localStorage.getItem('trackedProperties');
+      // Avoid parse errors crashing the view
       if (stored) setSavedDeals(JSON.parse(stored));
     } catch (err) {
       console.warn('Could not load tracked deals', err);
@@ -276,7 +284,7 @@ export default function App() {
           <h1><span role="img" aria-label="House">🏠</span> Real Estate Tracker</h1>
         </div>
         <nav className="app-nav-links">
-          <Link to="/" className={!isPortfolioView && !isFavoritesView ? 'active-link' : ''}>Listings</Link>
+          <Link to="/" className={isHomeView ? 'active-link' : ''}>Listings</Link>
           <Link to="/favorites" className={isFavoritesView ? 'active-link' : ''}>Favorites</Link>
           <Link
             to="/portfolio"
@@ -290,6 +298,8 @@ export default function App() {
           >
             Portfolio
           </Link>
+          <Link to="/landlord" className={isLandlordView ? 'active-link' : ''}>My Rentals</Link>
+          <Link to="/renter" className={isRenterView ? 'active-link' : ''}>Renter Login</Link>
         </nav>
       </header>
 
@@ -345,6 +355,10 @@ export default function App() {
             </div>
           </div>
         )
+      ) : isLandlordView ? (
+        <LandlordPortal />
+      ) : isRenterView ? (
+        <RenterPortal />
       ) : (
         <div className="listing-view">
           {saveMessage && (
@@ -500,42 +514,39 @@ export default function App() {
               )}
             </div>
           </div>
+        </div>
+      )}
+      {selectedProperty && (
+        <div className="modal" onClick={closeModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="close-btn" onClick={closeModal} aria-label="Close">X</button>
 
-          
-          
-{selectedProperty && (
-            <div className="modal" onClick={closeModal}>
-              <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                <button className="close-btn" onClick={closeModal} aria-label="Close">X</button>
-
-                <div className="detail-image">
-                  <img
-                    src={mainImage || selectedProperty.images?.[0] || PLACEHOLDER_IMAGE}
-                    alt={`${selectedProperty.address} large`}
-                  />
-                </div>
-
-                <div className="thumbnails">
-                  {(selectedProperty.images || [PLACEHOLDER_IMAGE]).map((img, i) => (
-                    <img
-                      key={i}
-                      src={img}
-                      alt={`thumbnail ${i + 1}`}
-                      className={img === mainImage ? 'active' : ''}
-                      onClick={(e) => { e.stopPropagation(); setMainImage(img); }}
-                    />
-                  ))}
-                </div>
-
-                <h2>{selectedProperty.address}</h2>
-                <p className="price">${selectedProperty.price.toLocaleString()}</p>
-                <p className="meta">
-                  {selectedProperty.beds} Beds | {selectedProperty.baths} Baths | {selectedProperty.sqft || '--'} sqft
-                </p>
-                <p className="description">{selectedProperty.description}</p>
-              </div>
+            <div className="detail-image">
+              <img
+                src={mainImage || selectedProperty.images?.[0] || PLACEHOLDER_IMAGE}
+                alt={`${selectedProperty.address} large`}
+              />
             </div>
-          )}
+
+            <div className="thumbnails">
+              {(selectedProperty.images || [PLACEHOLDER_IMAGE]).map((img, i) => (
+                <img
+                  key={i}
+                  src={img}
+                  alt={`thumbnail ${i + 1}`}
+                  className={img === mainImage ? 'active' : ''}
+                  onClick={(e) => { e.stopPropagation(); setMainImage(img); }}
+                />
+              ))}
+            </div>
+
+            <h2>{selectedProperty.address}</h2>
+            <p className="price">${selectedProperty.price.toLocaleString()}</p>
+            <p className="meta">
+              {selectedProperty.beds} Beds | {selectedProperty.baths} Baths | {selectedProperty.sqft || '--'} sqft
+            </p>
+            <p className="description">{selectedProperty.description}</p>
+          </div>
         </div>
       )}
     </div>

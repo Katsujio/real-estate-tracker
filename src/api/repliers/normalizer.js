@@ -5,6 +5,7 @@ const CDN_PREFIX = 'https://cdn.repliers.io/';
 function ensureUrl(url) {
   if (!url) return null;
   if (/^https?:\/\//i.test(url)) return url;
+  // Repliers CDN paths need the base prefix
   return `${CDN_PREFIX}${url.startsWith('/') ? url.slice(1) : url}`;
 }
 
@@ -92,7 +93,10 @@ function buildAddress(row) {
 
 function buildDescription(row) {
   const details = row.details || {};
-  return firstString(details.description, row.description, row.publicRemarks);
+  const text = firstString(details.description, row.description, row.publicRemarks);
+  if (!text) return null;
+  // Remove common sample markers from upstream data
+  return text.replace(/\*+ sample data \*+/gi, '').trim();
 }
 
 export function normalizeListing(row, fallbackId, placeholderImage) {

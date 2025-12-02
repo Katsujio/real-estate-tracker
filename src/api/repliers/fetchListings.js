@@ -10,6 +10,7 @@ export async function fetchListings(params = {}, placeholderImage, signal) {
   });
 
   const url = `/api/listings${search.toString() ? `?${search.toString()}` : ''}`;
+  // Simple GET to our proxy; errors bubble up for the caller
   const res = await fetch(url, { signal });
   if (!res.ok) {
     const message = await res.text().catch(() => res.statusText);
