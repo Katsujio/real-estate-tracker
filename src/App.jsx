@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 
 import Login from './Login';
 import Portfolio from './Portfolio';
@@ -78,6 +78,7 @@ export default function App() {
   const [favorites, setFavorites] = useState([]); // saved properties (simple heart/save)
   const [selectedProperty, setSelectedProperty] = useState(null);
   const [mainImage, setMainImage] = useState('');
+  const [dealDraft, setDealDraft] = useState(null); // draft deal to prefill the portfolio form
   const [authPromptKey, setAuthPromptKey] = useState(0);
   const [authMode, setAuthMode] = useState('login');
   const [saveMessage, setSaveMessage] = useState('');
@@ -86,6 +87,7 @@ export default function App() {
   // Bump this to re-trigger a small fade when listings change
   const [listVersion, setListVersion] = useState(0);
   const location = useLocation();
+  const navigate = useNavigate();
   const isPortfolioView = location.pathname === '/portfolio';
   const isFavoritesView = location.pathname === '/favorites';
   const isLandlordView = location.pathname === '/landlord';
@@ -213,25 +215,17 @@ export default function App() {
       return;
     }
     const estimatedRent = property.price ? Math.round(property.price * 0.008) : '';
-    const id =
-      typeof crypto !== 'undefined' && crypto.randomUUID
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    const newDeal = {
-      id,
+    // Prefill the portfolio form instead of auto-saving
+    setDealDraft({
       listingId: property.id,
       address: property.address,
       purchasePrice: property.price?.toString() || '',
       expectedRent: estimatedRent ? estimatedRent.toString() : '',
       stage: 'Reviewing',
       notes: ''
-    };
-    setSavedDeals((prev) => [newDeal, ...prev]);
-    setSaveMessage('Saved to your portfolio');
-    window.clearTimeout(handleTrackProperty._timeoutId);
-    handleTrackProperty._timeoutId = window.setTimeout(() => {
-      setSaveMessage('');
-    }, 2000);
+    });
+    // Navigate to portfolio so the user can review/edit before saving
+    navigate('/portfolio');
   };
 
   // Toggle favorite (save/unsave)
@@ -344,6 +338,8 @@ export default function App() {
           <Portfolio
             savedDeals={savedDeals}
             onSavedChange={setSavedDeals}
+            incomingDraft={dealDraft}
+            onDraftConsumed={() => setDealDraft(null)}
           />
         ) : (
           <div className="locked-card">
@@ -366,6 +362,7 @@ export default function App() {
               {saveMessage}
             </div>
           )}
+
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               {user && <span style={{ fontSize: 13 }}>Signed in as {user.email}</span>}
@@ -432,9 +429,8 @@ export default function App() {
           <div className="listings-section">
             <div className="listings-header">
               <div>
-                <p className="listings-eyebrow">Listings in View</p>
                 <h2>Explore live market inventory powered by Repliers.</h2>
-                <p className="listings-sub">Hover a card to spotlight the map marker.</p>
+                <p className="listings-sub">Click on a card for more details.</p>
               </div>
               <span className="listings-count">{filtered.length} results</span>
             </div>

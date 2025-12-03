@@ -78,7 +78,7 @@ const parseExpiry = (value) => {
 
 export default function RenterPortal() {
   const { user, token, login, logout } = useAuth();
-  const [form, setForm] = useState({ email: DEMO_RENTER.email, password: DEMO_RENTER.password });
+  const [form, setForm] = useState({ email: '', password: '' });
   const [isAuthed, setIsAuthed] = useState(false);
   const [authError, setAuthError] = useState('');
   const [profile, setProfile] = useState(demoRenterProfile);
@@ -307,7 +307,7 @@ export default function RenterPortal() {
     return (
       <section className="portal-card">
         <h2>Renter Login</h2>
-        <p className="status-message">Log in to share your info with the landlord tab.</p>
+        <p className="status-message">Login to view your payment details.</p>
         <form className="simple-form" onSubmit={handleLogin}>
           <label>
             Email
@@ -315,7 +315,7 @@ export default function RenterPortal() {
               type="email"
               value={form.email}
               onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
-              placeholder="renter@demo.com"
+              placeholder=""
               required
             />
           </label>
@@ -325,7 +325,7 @@ export default function RenterPortal() {
               type="password"
               value={form.password}
               onChange={(e) => setForm((prev) => ({ ...prev, password: e.target.value }))}
-              placeholder="password123"
+              placeholder=""
               required
             />
           </label>
@@ -405,21 +405,17 @@ export default function RenterPortal() {
           </div>
           <div className="panel-body table-shell">
             <p className="listings-eyebrow">{monthLabel} {yearLabel}</p>
-             <div className="balance-table">
-               <div className="balance-row">
-                 <span>Rent</span>
-                 <span>{formatMoney(monthlyRent || 0)}</span>
-               </div>
-               <div className="balance-row muted">
-                 <span>Credits & Prepayments</span>
-                 <span>$0.00</span>
-                </div>
-                <div className="balance-row total">
-                  <span>Total Balance</span>
-                  <span>{formatMoney(currentBalance || 0)}</span>
-                </div>
+            <div className="balance-table">
+              <div className="balance-row">
+                <span>Rent</span>
+                <span>{formatMoney(monthlyRent || 0)}</span>
+              </div>
+              <div className="balance-row total">
+                <span>Total Balance</span>
+                <span>{formatMoney(currentBalance || 0)}</span>
               </div>
             </div>
+          </div>
           </div>
 
         <div className="panel">

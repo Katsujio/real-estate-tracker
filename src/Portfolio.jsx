@@ -6,7 +6,12 @@ const formatCurrency = (value) => {
   return `$${Math.round(value).toLocaleString()}`;
 };
 
-export default function Portfolio({ savedDeals = [], onSavedChange }) {
+export default function Portfolio({
+  savedDeals = [],
+  onSavedChange,
+  incomingDraft,
+  onDraftConsumed,
+}) {
   // Simple pipeline counts for each stage
   const pipeline = useMemo(() => {
     const counts = STAGES.reduce((acc, stage) => {
@@ -84,7 +89,12 @@ export default function Portfolio({ savedDeals = [], onSavedChange }) {
         ))}
       </div>
 
-      <SavedProperties onSavedChange={onSavedChange} savedList={savedDeals} />
+      <SavedProperties
+        onSavedChange={onSavedChange}
+        savedList={savedDeals}
+        incomingDraft={incomingDraft}
+        onDraftConsumed={onDraftConsumed}
+      />
     </section>
   );
 }

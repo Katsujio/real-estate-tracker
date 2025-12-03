@@ -673,6 +673,11 @@ h2 { margin-top: 26px; margin-bottom: 12px; }
   flex-direction: column;
   gap: 18px;
 }
+/* Landlord portal uses a slightly narrower column so the page does not feel empty on wide screens */
+.landlord-page {
+  max-width: 1120px;
+  margin: 4px auto 16px;
+}
 .portal-header {
   background: #fff;
   padding: 18px;
@@ -710,6 +715,24 @@ h2 { margin-top: 26px; margin-bottom: 12px; }
   border-radius: 12px;
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
   border: 1px solid #e2e8f0;
+}
+/* Give landlord unit cards a stronger visual structure */
+.landlord-card {
+  padding: 16px 18px;
+  position: relative;
+  overflow: hidden;
+}
+.landlord-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, #4ade80, #22c55e);
+}
+.landlord-card .portal-row {
+  margin: 10px 0;
 }
 .portal-card-head {
   display: flex;

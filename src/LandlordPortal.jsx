@@ -30,7 +30,7 @@ const contractEndInMonths = (months) => {
 
 export default function LandlordPortal() {
   const { user, token, login, logout } = useAuth();
-  const [form, setForm] = useState({ email: DEMO_LANDLORD.email, password: DEMO_LANDLORD.password });
+  const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [isAuthed, setIsAuthed] = useState(false);
   const [properties, setProperties] = useState([]);
@@ -109,7 +109,6 @@ export default function LandlordPortal() {
     return (
       <section className="portal-card">
         <h2>Landlord Login</h2>
-        <p className="status-message">Use landlord@demo.com / password123 to view the demo data.</p>
         <form className="simple-form" onSubmit={handleLogin}>
           <label>
             Email
@@ -137,10 +136,9 @@ export default function LandlordPortal() {
   }
 
   return (
-    <section className="portal-page">
+    <section className="portal-page landlord-page">
       <header className="portal-header">
         <div>
-          <p className="portfolio-eyebrow">My Rentals</p>
           <h1>Landlord tools</h1>
           <p className="portfolio-subtitle">
             See who is in each unit, when they pay, and if this month is covered.
@@ -188,7 +186,7 @@ export default function LandlordPortal() {
           const contractEnd = contractEndInMonths(6);
           const tenantLabel = lease?.renter_name || lease?.renter_email || lease?.renter_id || 'No tenant yet';
           return (
-          <div key={prop.id} className="portal-card">
+          <div key={prop.id} className="portal-card landlord-card">
             <div className="portal-card-head">
               <div>
                 <p className="listings-eyebrow">{prop.title}</p>
